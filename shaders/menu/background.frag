@@ -1,5 +1,4 @@
 #version 100
-
 precision mediump float;
 
 struct GridTexture
@@ -10,8 +9,16 @@ struct GridTexture
     float height;
 };
 
+struct MultipleGridTexture
+{
+    sampler2D texture[2];
+    float index;
+    float width;
+    float height;
+};
+
 uniform GridTexture gt_background;
-uniform GridTexture gt_static;
+uniform MultipleGridTexture gt_static;
 uniform sampler2D u_blip_texture;
 
 uniform float u_alpha;
@@ -21,29 +28,33 @@ uniform float u_blip_alpha;
 
 varying vec2 v_texture_coords;
 
-vec4 sample_grid(vec2 gt_texture_coords, GridTexture gt_tex)
-{
-    float col = mod(gt_tex.index, gt_tex.width);
-    float row = floor(gt_tex.index / gt_tex.width);
-    return texture2D(gt_tex.texture, vec2(
-        gt_texture_coords.x / gt_tex.width + col / gt_tex.width,
-        gt_texture_coords.y / gt_tex.height + row / gt_tex.height
-    ));
-}   
-
 void main()
 {
-    vec3 background_color = (sample_grid(v_texture_coords, gt_background) * u_alpha).rgb;
-    vec3 static_color = (sample_grid(v_texture_coords, gt_static) * 0.66).rgb;
+    float bg_col = mod(gt_background.index, gt_background.width);
+    float bg_row = floor(gt_background.index / gt_background.width);
+    vec3 background_color = (texture2D(gt_background.texture, vec2(
+        v_texture_coords.x / gt_background.width + bg_col / gt_background.width,
+        v_texture_coords.y / gt_background.height + bg_row / gt_background.height
+    )) * u_alpha).rgb;
+
+    float st_col = mod(gt_static.index, gt_static.width);
+    float st_row = floor(gt_static.index / gt_static.width);
+    vec2 st_uv = vec2(v_texture_coords.x,
+                      v_texture_coords.y / gt_static.height + st_row / gt_static.height);
+
+    vec4 st_sample;
+    if (int(floor(st_col)) == 0)
+        st_sample = texture2D(gt_static.texture[0], st_uv);
+    else
+        st_sample = texture2D(gt_static.texture[1], st_uv);
+
+    vec3 static_color = (st_sample * 0.66).rgb;
     gl_FragColor = vec4(background_color + static_color, 1.0);
 
-    if(v_texture_coords.y > u_bar_offset && v_texture_coords.y < u_bar_offset + u_bar_width)
-    {
-        gl_FragColor = mix(gl_FragColor, vec4(1.0, 1.0, 1.0, 1.0), 0.2);
-        gl_FragColor.a = 1.0;
-    }
+    if (v_texture_coords.y > u_bar_offset && v_texture_coords.y < u_bar_offset + u_bar_width)
+        gl_FragColor = mix(gl_FragColor, vec4(1.0), 0.2);
 
     vec4 blip_color = texture2D(u_blip_texture, v_texture_coords);
-    if(blip_color.r > 0.5)
+    if (blip_color.r > 0.5)
         gl_FragColor = mix(gl_FragColor, blip_color, u_blip_alpha);
 }   

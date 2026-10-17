@@ -10,7 +10,7 @@ varying vec2 v_texture_coords;
 // TODO: Make this a proper uniform, I should only be using 32x32px fonts anyways for which this value is all right.
 const float pxRange = 8.0;
 
-const float boldness = 0.075; // 15% boldness
+const float boldness = 0.09; // 18% boldness
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
